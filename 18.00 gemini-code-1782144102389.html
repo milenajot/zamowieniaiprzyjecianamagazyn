@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Pulpit Zamówień i Dostaw - ORLIŃSCY</title>
+    <script src="https://api.bitrix24.com/api/v1/"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        :root {
+            --orlinscy-dark: #2c3e50;
+            --orlinscy-turquoise: #1abc9c;
+            --orlinscy-light: #f8f9fa;
+            --orlinscy-card: #ffffff;
+            --text-color: #333333;
+            --border-color: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--orlinscy-light);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { border-bottom: 3px solid var(--orlinscy-turquoise); padding-bottom: 10px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }
+        header h1 { color: var(--orlinscy-dark); margin: 0; font-size: 24px; font-weight: 600; }
+        .branding-tag { background-color: var(--orlinscy-dark); color: white; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; letter-spacing: 1px; }
+        
+        /* STYL ZAKŁADEK GŁÓWNYCH */
+        .main-workflow-tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid var(--border-color); }
+        .workflow-btn { background-color: #e2e8f0; border: none; padding: 12px 25px; font-size: 15px; font-weight: bold; color: #475569; border-radius: 6px 6px 0 0; cursor: pointer; transition: all 0.2s ease; }
+        .workflow-btn.active { background-color: var(--orlinscy-dark); color: white; }
+        
+        /* DOMYŚLNIE UKRYWAMY SEKCJE - JS JE POKAŻE */
+        .workflow-section { display: none; }
+
+        .import-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { background: none; border: 1px solid var(--border-color); padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 600; color: var(--orlinscy-dark); }
+        .tab-btn.active { background-color: #475569; color: white; border-color: #475569; }
+        .import-section { display: none; }
+
+        .card { background-color: var(--orlinscy-card); border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); padding: 25px; margin-bottom: 25px; border: 1px solid var(--border-color); }
+        .card-title { font-size: 18px; color: var(--orlinscy-dark); margin-top: 0; margin-bottom: 20px; font-weight: 600; border-left: 4px solid var(--orlinscy-turquoise); padding-left: 10px; }
+        
+        #drop-zone { border: 2px dashed var(--orlinscy-turquoise); background-color: rgba(26, 188, 156, 0.03); border-radius: 6px; padding: 30px; text-align: center; cursor: pointer; }
+        .input-group { display: flex; gap: 10px; }
+        .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 15px; }
+        label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 5px; color: var(--orlinscy-dark); }
+        input, select { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; font-size: 14px; }
+        
+        .btn { background-color: var(--orlinscy-turquoise); color: white; border: none; padding: 12px 25px; font-size: 14px; font-weight: bold; border-radius: 4px; cursor: pointer; transition: background 0.2s ease; }
+        .btn:hover { background-color: #16a085; }
+        .btn:disabled { background-color: #cbd5e1; cursor: not-allowed; }
+        .btn-secondary { background-color: var(--orlinscy-dark); }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th { background-color: var(--orlinscy-dark); color: white; text-align: left; padding: 12px; font-size: 14px; }
+        td { padding: 12px; border-bottom: 1px solid var(--border-color); font-size: 14px; }
+        
+        .automation-control { background-color: #f1f5f9; padding: 15px; border-radius: 6px; margin-top: 20px; display: flex; align-items: center; border: 1px solid var(--border-color); }
+        .automation-control input[type="checkbox"] { width: auto; margin-right: 12px; transform: scale(1.2); }
+        .automation-control label { margin: 0; font-size: 14px; font-weight: 600; color: var(--orlinscy-dark); }
+
+        .status-box { padding: 15px; border-radius: 4px; margin-top: 15px; display: block; font-weight: 500; }
+        .info { background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>📦 PULPIT ZAMÓWIEŃ I DOSTAW</h1>
+        <div class="branding-tag">ORLIŃSCY.PL</div>
+    </header>
+
+    <div class="main-workflow-tabs">
+        <button id="btn-small" class="workflow-btn active" onclick="switchWorkflow('small-orders-section', this)">👓 1. Małe zamówienie (Pojedyncze oprawy)</button>
+        <button id="btn-large" class="workflow-btn" onclick="switchWorkflow('large-orders-section', this)">🚛 2. Duże zamówienie (Hurt / Pliki / Sheets)</button>
+    </div>
+
+    <div id="status-message" class="status-box info">Inicjalizacja aplikacji...</div>
+
+    <div id="small-orders-section" class="workflow-section" style="display: block;">
+        <div class="card">
+            <div class="card-title">Dodaj pojedynczą oprawę do zamówienia salonu</div>
+            <div class="grid-form">
+                <div><label>Marka / Dostawca</label><input type="text" id="form-brand" placeholder="np. Mexx"></div>
+                <div><label>Pełna nazwa modelu z kolorem i rozmiarem</label><input type="text" id="form-model" placeholder="np. Mexx 2598 400 5517"></div>
+                <div><label>Cena na półce (docelowa)</label><input type="number" id="form-price" placeholder="599"></div>
+                <div><label>Ilość</label><input type="number" id="form-qty" value="1"></div>
+                <div>
+                    <label>Salon</label>
+                    <select id="form-salon">
+                        <option value="Piastów">Piastów</option><option value="Kabaty">Kabaty</option><option value="Bemowo">Bemowo</option><option value="Gocław">Gocław</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn btn-secondary" onclick="addSingleProduct()">Dodaj do listy małych zamówień</button>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Podgląd listy małego zamówienia</div>
+            <table id="small-products-table">
+                <thead>
+                    <tr><th>Lp.</th><th>Marka</th><th>Pełna nazwa modelu (Katalog)</th><th>Cena na półce</th><th>Ilość</th><th>Salon</th></tr>
+                </thead>
+                <tbody><tr><td colspan="6" style="text-align: center; color: #94a3b8;">Brak pozycji.</td></tr></tbody>
+            </table>
+
+            <div class="automation-control">
+                <input type="checkbox" id="small-send-to-supplier" checked>
+                <label for="small-send-to-supplier">Uruchom automatyczne powiadomienia dostawcy (Wyślij natychmiastowy SMS / E-mail do hurtowni)</label>
+            </div>
+
+            <div style="margin-top: 25px; text-align: right;">
+                <button class="btn" id="small-submit-btn" onclick="submitOrderToBitrix('small')" disabled>🚀 Wyślij małe zamówienie do CRM</button>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="large-orders-section" class="workflow-section" style="display: none;">
+        <div class="card">
+            <div class="card-title">Metoda importu dużego zamówienia zbiorczego</div>
+            
+            <div class="import-tabs">
+                <button id="btn-route-file" class="tab-btn active" onclick="switchImportMethod('file-route', this)">📁 Plik z dysku komputera (.xlsx)</button>
+                <button id="btn-route-link" class="tab-btn" onclick="switchImportMethod('link-route', this)">🔗 Link Google Sheets</button>
+            </div>
+
+            <div id="file-route" class="import-section" style="display: block;">
+                <div id="drop-zone" onclick="document.getElementById('excel-file').click()">
+                    <p>Przeciągnij i upuść plik zamówienia hurtowego tutaj lub <strong>kliknij, aby wybrać</strong></p>
+                    <input type="file" id="excel-file" style="display:none;" accept=".xlsx, .xls">
+                </div>
+            </div>
+
+            <div id="link-route" class="import-section" style="display: none;">
+                <label>Wklej pełny link do arkusza Google Sheets z zamówieniem:</label>
+                <div class="input-group">
+                    <input type="text" id="gs-url" placeholder="https://docs.google.com/spreadsheets/d/.../edit...">
+                    <button class="btn btn-secondary" onclick="loadFromGoogleSheets()">Wczytaj arkusz Google</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Podgląd rozpakowanego dużego zamówienia hurtowego</div>
+            <table id="large-products-table">
+                <thead>
+                    <tr><th>Lp.</th><th>Marka</th><th>Pełna nazwa modelu (Katalog)</th><th>Cena na półce</th><th>Ilość</th><th>Salon</th></tr>
+                </thead>
+                <tbody><tr><td colspan="6" style="text-align: center; color: #94a3b8;">Brak danych.</td></tr></tbody>
+            </table>
+
+            <div class="automation-control">
+                <input type="checkbox" id="large-send-to-supplier">
+                <label for="large-send-to-supplier">Uruchom automatyczne powiadomienia dostawcy (Domyślnie WYŁĄCZONE dla dużych plików)</label>
+            </div>
+
+            <div style="margin-top: 25px; text-align: right;">
+                <button class="btn" id="large-submit-btn" onclick="submitOrderToBitrix('large')" disabled>🚀 Wyślij duże zamówienie hurtowe do CRM</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Twoje stałe proxy z Google Apps Script:
+    const GOOGLE_PROXY_URL = "https://script.google.com/macros/s/AKfycbxXsfk1RMwwYP90jx4Fsla2vXgpWQBj7j1ZHVwW_pnMKnztv12jGCxJrPzfl5RwGGHp/exec";
+    
+    const BITRIX_CATEGORY_ID = 3; 
+    const BITRIX_STAGE_ID = "C3:NEW"; 
+    const SALON_FIELD_CODE = "UF_CRM_12345678"; 
+    const BITRIX_SEND_TO_SUPPLIER_FIELD = "UF_CRM_WYSLIJ_ZAMOWIENIE"; 
+
+    let smallOrderItems = [];
+    let largeOrderItems = [];
+
+    // Funkcja sterująca statusem
+    function showStatus(type, message) {
+        const box = document.getElementById('status-message');
+        box.className = "status-box " + type;
+        box.innerHTML = message;
+    }
+
+    // 🌟 PANZERA LOGIKA PRZEŁĄCZANIA ZAKŁADEK GŁÓWNYCH
+    function switchWorkflow(sectionId, btn) {
+        // Ukryj wszystkie sekcje
+        document.getElementById('small-orders-section').style.display = 'none';
+        document.getElementById('large-orders-section').style.display = 'none';
+        
+        // Dezaktywuj przyciski
+        document.getElementById('btn-small').classList.remove('active');
+        document.getElementById('btn-large').classList.remove('active');
+        
+        // Pokaż wybraną sekcję i aktywuj przycisk
+        document.getElementById(sectionId).style.display = 'block';
+        btn.classList.add('active');
+        showStatus("info", "Przełączono obszar roboczy pulpitu.");
+    }
+
+    // 🌟 PANZERA LOGIKA PODZAKŁADEK IMPORTU
+    function switchImportMethod(sectionId, btn) {
+        document.getElementById('file-route').style.display = 'none';
+        document.getElementById('link-route').style.display = 'none';
+        
+        document.getElementById('btn-route-file').classList.remove('active');
+        document.getElementById('btn-route-link').classList.remove('active');
+        
+        document.getElementById(sectionId).style.display = 'block';
+        btn.classList.add('active');
+    }
+
+    // Bezpieczny start aplikacji
+    if (typeof BX24 !== 'undefined') {
+        BX24.init(function(){ 
+            showStatus("info", "Połączono z Twoim Bitrix24! Panel gotowy do testów."); 
+        });
+    } else {
+        setTimeout(function() {
+            showStatus("info", "💡 Tryb podglądu: Zakładki i wczytywanie Google Sheets będą działać w 100%!");
+        }, 100);
+    }
+
+    function addSingleProduct() {
+        const brand = document.getElementById('form-brand').value.trim();
+        const model = document.getElementById('form-model').value.trim();
+        const price = parseFloat(document.getElementById('form-price').value) || 0;
+        const qty = parseInt(document.getElementById('form-qty').value) || 1;
+        const salon = document.getElementById('form-salon').value;
+        if(!brand || !model) { alert("Uzupełnij markę i model!"); return; }
+        
+        smallOrderItems.push({ brand, model, price, qty, salon });
+        renderTable('small');
+        showStatus("success", "Dodano pojedynczą oprawę do podglądu.");
+        
+        document.getElementById('form-brand').value = ''; 
+        document.getElementById('form-model').value = ''; 
+        document.getElementById('form-price').value = '';
+    }
+
+    function loadFromGoogleSheets() {
+        const urlInput = document.getElementById('gs-url').value.trim();
+        const matches = urlInput.match(/\/d\/([a-zA-Z0-9-_]+)/);
+        if (!matches || !matches[1]) { alert("Niepoprawny link!"); return; }
+        
+        showStatus("info", "Łączenie z dyskiem Google i wyciąganie danych z arkusza...");
+
+        fetch(`${GOOGLE_PROXY_URL}?sheet_id=${matches[1]}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showStatus("error", "Błąd Google: " + data.error);
+                } else {
+                    document.getElementById('large-send-to-supplier').checked = false;
+                    parseExcelData(data.result);
+                }
+            })
+            .catch(err => { showStatus("error", "Błąd połączenia sieciowego: " + err.toString()); });
+    }
+
+    document.getElementById('excel-file').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+            document.getElementById('large-send-to-supplier').checked = false; 
+            parseExcelData(jsonData);
+        };
+        reader.readAsArrayBuffer(file);
+    }, false);
+
+    function parseExcelData(rows) {
+        largeOrderItems = [];
+        let startParsing = false;
+        let validRowsCount = 0;
+
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row || row.length < 2) continue;
+
+            const cell0 = row[0] ? row[0].toString().trim() : "";
+            const cell1 = row[1] ? row[1].toString().trim() : "";
+
+            if (cell0.toUpperCase().includes("RAZEM") || cell1.toUpperCase().includes("RAZEM")) break;
+
+            if (cell0 === 'Lp.' || cell1 === 'Marka / Dostawca') {
+                startParsing = true;
+                continue;
+            }
+
+            if (startParsing) {
+                if (!cell1 && !row[2]) continue;
+
+                largeOrderItems.push({
+                    brand: cell1,
+                    model: row[2] ? row[2].toString().trim() : "",
+                    price: row[4] ? parseFloat(row[4].toString().replace(',','.')) : 0,
+                    qty: row[5] ? parseInt(row[5]) : 1,
+                    salon: row[6] ? row[6].toString().trim() : "Nieznany"
+                });
+                validRowsCount++;
+            }
+        }
+        
+        renderTable('large');
+
+        if (validRowsCount > 0) {
+            showStatus("success", `🎉 Wczytano <strong>${validRowsCount}</strong> pozycji z pliku. Przycisk 'Wyślij duże zamówienie' jest już aktywny!`);
+        } else {
+            showStatus("error", "Otworzyliśmy plik, ale tabela była pusta. Sprawdź strukturę.");
+        }
+    }
+
+    function renderTable(type) {
+        const tbody = document.querySelector(`#${type}-products-table tbody`);
+        const submitBtn = document.getElementById(`${type}-submit-btn`);
+        const items = (type === 'small') ? smallOrderItems : largeOrderItems;
+        tbody.innerHTML = '';
+        
+        if(items.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #94a3b8;">Brak pozycji.</td></tr>`;
+            submitBtn.disabled = true;
+            return;
+        }
+
+        items.forEach((item, index) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${index + 1}</td><td><strong>${item.brand}</strong></td><td>${item.model}</td><td>${item.price.toFixed(2)} zł</td><td>${item.qty} szt.</td><td><span style="color:var(--orlinscy-turquoise); font-weight:bold;">${item.salon}</span></td>`;
+            tbody.appendChild(tr);
+        });
+        submitBtn.disabled = false;
+    }
+
+    function submitOrderToBitrix(type) {
+        const items = (type === 'small') ? smallOrderItems : largeOrderItems;
+        const isAutomationChecked = document.getElementById(`${type}-send-to-supplier`).checked;
+        const mainSalon = items[0] ? items[0].salon : "Ogólny";
+        const mainBrand = items[0] ? items[0].brand : "Oprawy";
+        const prefix = type === 'small' ? "[TEST MAŁY] Zamówienie: " : "[TEST HURT] Zamówienie: ";
+
+        if (typeof BX24 === 'undefined') {
+            showStatus("success", `🎰 <strong>[SYMULACJA LOKALNA]</strong> Utworzono by Deal dla marki: <strong>${mainBrand}</strong> i salonu: <strong>${mainSalon}</strong>. Powiadomienia: ${isAutomationChecked ? 'WŁĄCZONE' : 'WYŁĄCZONA'}.`);
+            if (type === 'small') { smallOrderItems = []; } else { largeOrderItems = []; }
+            renderTable(type);
+            return;
+        }
+        
+        showStatus("info", "Wysyłanie zapytania do CRM Bitrix24...");
+        let testOpis = `DANE Z PULPITU ORLIŃSCY:\nSalon docelowy: ${mainSalon}\nCzy powiadomić hurtownię?: ${isAutomationChecked ? 'TAK' : 'NIE'}\n`;
+        let dealFields = { "TITLE": prefix + mainBrand + " [" + mainSalon + "]", "COMMENTS": testOpis };
+
+        BX24.callMethod('crm.deal.add', { fields: dealFields }, function(dealResult) {
+            if (dealResult.error()) {
+                showStatus("error", "<strong>Błąd zapisu w Bitrix:</strong> " + JSON.stringify(dealResult.error().ex));
+            } else {
+                const newDealId = dealResult.data();
+                let productRows = items.map(item => { return { "PRODUCT_NAME": item.model, "PRICE": item.price, "QUANTITY": item.qty }; });
+                
+                BX24.callMethod('crm.deal.productrows.set', { id: newDealId, rows: productRows }, function(prodResult) {
+                    if(prodResult.error()) {
+                        showStatus("error", "Deal założony (ID: " + newDealId + "), ale błąd linii produktowych: " + JSON.stringify(prodResult.error().ex));
+                    } else {
+                        showStatus("success", `🎉 <strong>SUKCES!</strong> W CRM pojawił się Deal o numerze <strong>#${newDealId}</strong> z przypisanymi produktami!`);
+                        if (type === 'small') { smallOrderItems = []; } else { largeOrderItems = []; }
+                        renderTable(type);
+                    }
+                });
+            }
+        });
+    }
+</script>
+</body>
+</html>
